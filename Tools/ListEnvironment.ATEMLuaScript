@@ -1,0 +1,7 @@
+VSLog("==============================================================================")
+VSLog("  E n v i r o n m e n t   V a r i a b l e s")
+VSLog("==============================================================================")
+
+for i = 1, EnviroVarCount() do
+   VSLog( LPad(i,3) .. " " .. RPad( EnviroVarGetName(i), 30 ) .. " " .. RPad( EnviroVarGetType(i), 9 ) .. " " .. EnviroVarGetValue(i) )
+end

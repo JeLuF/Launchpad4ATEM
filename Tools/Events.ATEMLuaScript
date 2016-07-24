@@ -1,0 +1,15 @@
+CLS();
+VSLog("-----------------------------------------------------------------------");
+VSLog(" L U A   E V E N T   L I S T");
+VSLog("-----------------------------------------------------------------------");
+
+for i = 1, EventsGetCount() do
+     VSLog( RPad( EventsGetName( i ), 50 ) .. EventsGetParamHeader( i ) );
+end;
+
+VSLog("-----------------------------------------------------------------------");
+VSLog(" R e g i s t e r e d   E v e n t s");
+VSLog("-----------------------------------------------------------------------");
+for i = 1, EventsGetHandlerCount() do
+     VSLog( LPad(i,3) .. "  " .. RPad(EventsGetHandlerEvent(i),50) .. "  " .. EventsGetHandlerMacroName(i) .. "::" .. EventsGetHandlerFunctionName(i) )
+end                                                                                                                  

@@ -1,0 +1,24 @@
+-- $$USES "LaunchpadLIB"
+VSLog("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -" )
+VSLog("         L a u n c h p a d   M i n i   C o n t r o l l e r   S e t u p " )
+VSLog("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -" )
+
+
+
+-- ---------------
+-- Init Buttons
+-- ---------------
+if EnviroRead( "Launchpad Mini Out" ) == 0 then
+   midiout = MIDI_Out_GetIDByName( "Launchpad Mini" );
+   EnviroWrite("Launchpad Mini Out", midiout );
+   MIDIInDeviceOpen( MIDI_In_GetIDByName("Launchpad Mini" ) );
+   Launchpad_Reset();
+   EventsAddHandler( "OnMIDIDeviceInMessage", "LaunchpadLIB", "Launchpad_MIDI_EventHandler" );
+end
+
+Launchpad_UpdateMixer()
+Launchpad_SetColour( 8, 7, LP_RED );
+Launchpad_SetColour( 8, 6, LP_ORANGE );
+
+
+-- EventsAddHandler( "OnMIDIDeviceInMessage", "MIDI_TOOLS", "MIDI_StandardMessage_EventHandler" );
