@@ -3,22 +3,35 @@ VSLog("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 VSLog("         L a u n c h p a d   M i n i   C o n t r o l l e r   S e t u p " )
 VSLog("- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -" )
 
-
-
--- ---------------
--- Init Buttons
--- ---------------
-if EnviroRead( "Launchpad Mini Out" ) == 0 then
-   midiout = MIDI_Out_GetIDByName( "Launchpad Mini" );
-   EnviroWrite("Launchpad Mini Out", midiout );
-   MIDIInDeviceOpen( MIDI_In_GetIDByName("Launchpad Mini" ) );
-   Launchpad_Reset();
-   EventsAddHandler( "OnMIDIDeviceInMessage", "LaunchpadLIB", "Launchpad_MIDI_EventHandler" );
+function EventHandlerExists( name )
+   for i = 1, EventsGetHandlerCount() do
+     VSLog( LPad(i,3) .. "  " .. RPad(EventsGetHandlerEvent(i),50) .. "  " .. EventsGetHandlerMacroName(i) .. "::" .. EventsGetHandlerFunctionName(i) )
+     if ( name == EventsGetHandlerMacroName(i) .. "::" .. EventsGetHandlerFunctionName(i) ) then
+        return true;
+     end
+   end
+   return false;
 end
 
-Launchpad_UpdateMixer()
-Launchpad_SetColour( 8, 7, LP_RED );
-Launchpad_SetColour( 8, 6, LP_ORANGE );
+
+-- ---------------
+-- Init Buttons                                     
+-- ---------------
+if not EventHandlerExists( "LaunchpadLIB::Launchpad_MIDI_EventHandler" ) then
+   midiout = MIDI_Out_GetIDByName( "Launchpad Mini" );
+   VSLog("Found Controller on address " .. midiout );
+   EnviroWrite("Launchpad Mini Out", midiout );
+   EnviroWrite("Launchpad Page", 1);
+   MIDIInDeviceOpen( MIDI_In_GetIDByName("Launchpad Mini" ) );
+   VSLog("Opened MIDI IN device");
+   Launchpad_Reset();
+   VSLog("Adding handler");                     
+   EventsAddHandler( "OnMIDIDeviceInMessage", "LaunchpadLIB", "Launchpad_MIDI_EventHandler" );
+   VSLog("Launchpad Mini initialization done.");
+end                                                             
+
+Launchpad_Update()
+                                                                          
 
 
 -- EventsAddHandler( "OnMIDIDeviceInMessage", "MIDI_TOOLS", "MIDI_StandardMessage_EventHandler" );

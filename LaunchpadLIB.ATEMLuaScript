@@ -15,7 +15,7 @@ function MIDI_In_GetIDByName( name )
          return i
       end
    end
-   return nil          
+   return nil
 end;
 
 function MIDI_Out_GetIDByName( name )
@@ -27,27 +27,97 @@ function MIDI_Out_GetIDByName( name )
    end
    return nil
 end;
-                                  
+
 function Launchpad_Reset()
-   MIDIOutSendMessage( midiout, "B0", "00", "00" )
+   MIDIOutSendMessage( 2, "B0", "00", "00" )
 end
 
 function Launchpad_SetColour(x, y, colour)
    -- VSLog("Set Button "..x.." "..y.." to colour "..colour)
-   MIDIOutSendMessage( 2, "90", y..x, colour );
+   if ( y == -1 ) then
+      MIDIOutSendMessage( 2, "B0", IntToHex(104 + x, 2), colour );
+   else
+      MIDIOutSendMessage( 2, "90", y..x, colour );
+   end
 end
 
-function Launchpad_UpdateMixer()
+function Launchpad_Update()
+   -- Show top level buttons
+   page = EnviroRead("Launchpad Page");
+   for i=1, 3 do
+      if ( i == page ) then
+         Launchpad_SetColour( i-1, -1, LP_LOW_RED);
+      else
+         Launchpad_SetColour( i-1, -1, LP_LOW_GREEN);
+      end
+   end
+
+   if     ( page == 1 ) then
+      Launchpad_Update_Mixer();
+   elseif ( page == 2 ) then
+      Launchpad_Update_Audio();
+   elseif ( page == 3 ) then
+      Launchpad_Update_FadeToBlack();
+   end
+
+end
+
+function Launchpad_Update_Audio()
+   for i = 1, 6 do
+      if ATEMMixerAudioGetInputIsMixedIn( 1, i ) then
+         Launchpad_SetColour( i-1, 7, LP_RED );
+      else
+         Launchpad_SetColour( i-1, 7, LP_LOW_GREEN );
+      end
+      level = (ATEMMixerAudioGetInputGain(1, i)-6)/66 * 7 + 7;
+      if level < 0 then level = 0 end
+      for j = 1, level do
+         VSLog("Input "..i.." Level "..level.." j="..j)
+         if j==6 then colour=LP_GREEN else colour=LP_AMBER end;
+         Launchpad_SetColour( i-1, 7-j, colour )            
+      end
+   end
+end
+
+function Launchpad_Update_FadeToBlack()
+  VSLog("Update FadeToBlack Page")
+   for i = 2, 5 do
+      for j = 2, 5 do
+         Launchpad_SetColour(i, j, LP_AMBER);
+      end
+   end
+   ftb = ATEMMixerMEGetFadedToBlack( 1,1 );
+   for i = 3, 4 do
+      for j = 3, 4 do
+         if ftb then
+            Launchpad_SetColour(i, j, LP_RED);
+         else
+            Launchpad_SetColour(i, j, LP_GREEN);
+         end
+      end
+   end
+end
+
+function Launchpad_Update_Mixer()
+   VSLog("   Updaet Mixer")
+   -- Camera buttons
    for i = 0,5 do
       Launchpad_SetColour( i, 6, LP_AMBER )
       Launchpad_SetColour( i, 7, LP_GREEN )
-   end                                              
+   end
+
+   -- Media Players
    Launchpad_SetColour(6, 6, LP_LOW_GREEN)
    Launchpad_SetColour(7, 6, LP_LOW_GREEN)
 
    Launchpad_SetColour(6, 7, LP_LOW_AMBER)
    Launchpad_SetColour(7, 7, LP_LOW_AMBER)
 
+   -- Cut and Autofade buttons
+   Launchpad_SetColour( 8, 7, LP_RED );
+   Launchpad_SetColour( 8, 6, LP_ORANGE );
+
+   -- Highlight active Program and Preview channels
    input = ATEMMixerMEGetPreviewInput( 1,1 )
    if input > 1 and input < 8 then
       Launchpad_SetColour( input-2, 7, LP_RED );
@@ -65,9 +135,11 @@ function Launchpad_UpdateMixer()
    elseif input == 13 then
       Launchpad_SetColour( 7, 6, LP_RED )
    end
+
 end
 
-function Launchpad_MIDI_EventHandler( pvDeviceID, pvStatusByte, pvDataByte1, pvDataByte2 )
+
+function Launchpad_MIDI_EventHandler_Mixer( pvDeviceID, pvStatusByte, pvDataByte1, pvDataByte2 )
    -- if ( pvDeviceID == 2 ) then
    if ( pvStatusByte == 144 ) then                     -- This is Note On Channel 0 (0x90)
       if ( pvDataByte2 ~= 0 ) then                     -- If velocity is Zero, We will ignore
@@ -99,7 +171,57 @@ function Launchpad_MIDI_EventHandler( pvDeviceID, pvStatusByte, pvDataByte1, pvD
          end
          VSLog( "LP-MIDI Message Note On Msg In Device[" .. pvDeviceID .. "] : " .. IntToHex( pvStatusByte, 2 ) .. "," .. IntToHex( pvDataByte1, 2 )  .. "," .. IntToHex( pvDataByte2, 2 ) );
          Sleep( 100 );
-         Launchpad_UpdateMixer();
+         Launchpad_Update();
+      end
+
+   else
+      VSLog( "LP-MIDI Message from Device[" .. pvDeviceID .. "] : " .. IntToHex( pvStatusByte, 2 ) .. "," .. IntToHex( pvDataByte1, 2 )  .. "," .. IntToHex( pvDataByte2, 2 ) );
+   end
+end
+
+function Launchpad_MIDI_EventHandler_Audio( pvDeviceID, pvStatusByte, pvDataByte1, pvDataByte2 )
+end
+
+function Launchpad_MIDI_EventHandler_FadeToBlack( pvDeviceID, pvStatusByte, pvDataByte1, pvDataByte2 )
+   if ( pvStatusByte == 144 ) then
+      if ( pvDataByte2 ~= 0 ) then                     -- If velocity is Zero, We will ignore
+         key = IntToHex(pvDataByte1,2)
+         VSLog( "LP-MIDI Message FTB button from Device[" .. pvDeviceID .. "] : " .. IntToHex( pvStatusByte, 2 ) .. "," .. IntToHex( pvDataByte1, 2 )  .. "," .. IntToHex( pvDataByte2, 2 ) );
+         if ( key == "33" or key == "34" or key == "43" or key == "44" ) then
+            ATEMMixerMEFadeToBlack( 1,1 );
+            Sleep( 1100 );
+            Launchpad_Update();
+         end
       end
    end
 end
+
+function Launchpad_MIDI_EventHandler( pvDeviceID, pvStatusByte, pvDataByte1, pvDataByte2 )
+   if ( pvStatusByte == 176 ) then
+      if ( pvDataByte2 ~= 0 ) then                     -- If velocity is Zero, We will ignore
+         key = IntToHex(pvDataByte1,2)
+         VSLog( "LP-MIDI Message page button from Device[" .. pvDeviceID .. "] : " .. IntToHex( pvStatusByte, 2 ) .. "," .. IntToHex( pvDataByte1, 2 )  .. "," .. IntToHex( pvDataByte2, 2 ) );
+         if ( key == "68" ) then
+             EnviroWrite("Launchpad Page", 1 );
+         elseif ( key == "69" ) then
+             EnviroWrite("Launchpad Page", 2 );
+         elseif ( key == "6A" ) then
+             EnviroWrite("Launchpad Page", 3 );
+         end
+         Launchpad_Reset();
+         Launchpad_Update();
+      end;
+   else
+      page = EnviroRead("Launchpad Page");
+      if     ( page == 1 ) then
+         Launchpad_MIDI_EventHandler_Mixer( pvDeviceID, pvStatusByte, pvDataByte1, pvDataByte2 )
+      elseif ( page == 2 ) then
+         Launchpad_MIDI_EventHandler_Audio( pvDeviceID, pvStatusByte, pvDataByte1, pvDataByte2 )
+      elseif ( page == 3 ) then
+         Launchpad_MIDI_EventHandler_FadeToBlack( pvDeviceID, pvStatusByte, pvDataByte1, pvDataByte2 )
+      else
+         VSLog("Unkown page "..page);
+      end
+   end
+end
+
