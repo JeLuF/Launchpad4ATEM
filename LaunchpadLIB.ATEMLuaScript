@@ -101,16 +101,21 @@ end
 function Launchpad_Update_Mixer()
    VSLog("   Updaet Mixer")
    -- Camera buttons
-   for i = 0,5 do
-      Launchpad_SetColour( i, 6, LP_AMBER )
+   for i = 0,2 do
+      Launchpad_SetColour( i, 6, LP_GREEN )
       Launchpad_SetColour( i, 7, LP_GREEN )
    end
 
-   -- Media Players
-   Launchpad_SetColour(6, 6, LP_LOW_GREEN)
-   Launchpad_SetColour(7, 6, LP_LOW_GREEN)
+   for i = 4,6 do
+      Launchpad_SetColour( i, 6, LP_AMBER )
+      Launchpad_SetColour( i, 7, LP_AMBER )
+   end
 
-   Launchpad_SetColour(6, 7, LP_LOW_AMBER)
+   -- Media Players
+   Launchpad_SetColour(3, 6, LP_LOW_GREEN)
+   Launchpad_SetColour(3, 7, LP_LOW_GREEN)
+
+   Launchpad_SetColour(7, 6, LP_LOW_AMBER)
    Launchpad_SetColour(7, 7, LP_LOW_AMBER)
 
    -- Cut and Autofade buttons
@@ -119,21 +124,23 @@ function Launchpad_Update_Mixer()
 
    -- Highlight active Program and Preview channels
    input = ATEMMixerMEGetPreviewInput( 1,1 )
+   -- 2 == Cam1   3 == Cam2   4 == Cam3   11 == MP1
+   -- 5 == Cam4   6 == Cam5   7 == Cam6   13 == MP2
    if input > 1 and input < 8 then
-      Launchpad_SetColour( input-2, 7, LP_RED );
+      Launchpad_SetColour( (input-2)%3, 6+math.floor((input-2)/3), LP_RED );
    elseif input == 11 then
-      Launchpad_SetColour( 6, 7, LP_RED )
+      Launchpad_SetColour( 3, 6, LP_RED )
    elseif input == 13 then
-      Launchpad_SetColour( 7, 7, LP_RED )
+      Launchpad_SetColour( 3, 7, LP_RED )
    end
 
    input = ATEMMixerMEGetProgramInput( 1,1 )
    if input > 1 and input < 8 then
-      Launchpad_SetColour( input-2, 6, LP_RED );
+      Launchpad_SetColour( 4+(input-2)%3, 6+math.floor((input-2)/3), LP_RED );
    elseif input == 11 then
-      Launchpad_SetColour( 6, 6, LP_RED )
-   elseif input == 13 then
       Launchpad_SetColour( 7, 6, LP_RED )
+   elseif input == 13 then
+      Launchpad_SetColour( 7, 7, LP_RED )
    end
 
 end
@@ -145,22 +152,28 @@ function Launchpad_MIDI_EventHandler_Mixer( pvDeviceID, pvStatusByte, pvDataByte
       if ( pvDataByte2 ~= 0 ) then                     -- If velocity is Zero, We will ignore
          -- xxx
          key = IntToHex(pvDataByte1,2)
-         if     ( "60" <= key and key <= "65" ) then
+         if     ( "60" <= key and key <= "62" ) then
             -- Set Program
-            ATEMMixerMESetProgramInput( 1, 1, pvDataByte1 - 94 )
-         elseif ( "70" <= key and key <= "75" ) then
+            ATEMMixerMESetPreviewInput( 1, 1, pvDataByte1 - 94 )
+         elseif ( "70" <= key and key <= "72" ) then
+            -- Set Program
+            ATEMMixerMESetPreviewInput( 1, 1, pvDataByte1 - 107 )
+         elseif ( "64" <= key and key <= "66" ) then
             -- Set Preview
-            ATEMMixerMESetPreviewInput( 1, 1, pvDataByte1 - 110 )
-         elseif ( key == "66" ) then
+            ATEMMixerMESetProgramInput( 1, 1, pvDataByte1 - 98 )
+         elseif ( "74" <= key and key <= "76" ) then
+            -- Set Preview                                                
+            ATEMMixerMESetProgramInput( 1, 1, pvDataByte1 - 111 )
+         elseif ( key == "67" ) then
             -- MP1 to Program
             ATEMMixerMESetProgramInput( 1, 1, 11 )
-         elseif ( key == "67" ) then
+         elseif ( key == "77" ) then
             -- MP2 to Program
             ATEMMixerMESetProgramInput( 1, 1, 13 )
-         elseif ( key == "76" ) then
+         elseif ( key == "63" ) then
             -- MP1 to Program
             ATEMMixerMESetPreviewInput( 1, 1, 11 )
-         elseif ( key == "77" ) then
+         elseif ( key == "73" ) then
             -- MP2 to Program
             ATEMMixerMESetPreviewInput( 1, 1, 13 )
          elseif ( key == "78" ) then
@@ -189,7 +202,18 @@ function Launchpad_MIDI_EventHandler_FadeToBlack( pvDeviceID, pvStatusByte, pvDa
          VSLog( "LP-MIDI Message FTB button from Device[" .. pvDeviceID .. "] : " .. IntToHex( pvStatusByte, 2 ) .. "," .. IntToHex( pvDataByte1, 2 )  .. "," .. IntToHex( pvDataByte2, 2 ) );
          if ( key == "33" or key == "34" or key == "43" or key == "44" ) then
             ATEMMixerMEFadeToBlack( 1,1 );
-            Sleep( 1100 );
+            for i=1,4 do
+               Launchpad_SetColour(3, 3, LP_LOW_RED);
+               Launchpad_SetColour(3, 4, LP_LOW_GREEN);
+               Launchpad_SetColour(4, 3, LP_LOW_GREEN);
+               Launchpad_SetColour(4, 4, LP_LOW_RED);
+               Sleep( 150 )
+               Launchpad_SetColour(3, 3, LP_LOW_GREEN);
+               Launchpad_SetColour(3, 4, LP_LOW_RED);                                        
+               Launchpad_SetColour(4, 3, LP_LOW_RED);
+               Launchpad_SetColour(4, 4, LP_LOW_GREEN);
+               Sleep( 150 )
+            end
             Launchpad_Update();
          end
       end
